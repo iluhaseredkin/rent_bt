@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Аренда жилья — Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-filter: #0f3460;
+            --accent: #e94560;
+            --accent-hover: #ff6b81;
+            --text: #eaeaea;
+            --text-muted: #a0a0b8;
+            --text-dim: #6b6b80;
+            --border: rgba(233, 69, 96, 0.15);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* ===== Background gradient ===== */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 20% 50%, rgba(233, 69, 96, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(15, 52, 96, 0.3) 0%, transparent 50%);
+            z-index: -1;
+            animation: bgShift 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgShift {
+            to {
+                transform: translate(5%, 3%);
+            }
+        }
+
+        /* ===== Header ===== */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(26, 26, 46, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 20px;
+        }
+
+        .header-inner {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #ff6b81);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .stat-badge {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            background: rgba(233, 69, 96, 0.12);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(233, 69, 96, 0.2);
+        }
+
+        /* ===== Main container ===== */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 16px 16px 100px;
+        }
+
+        /* ===== Filter panel ===== */
+        .filter-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .filter-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-title::before {
+            content: '⚙️';
+            font-size: 16px;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-select,
+        .filter-input {
+            flex: 1;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: border-color var(--transition);
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .filter-select:focus,
+        .filter-input:focus {
+            border-color: var(--accent);
+        }
+
+        .filter-select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a0a0b8' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 01.708 0L8 10.293l5.646-5.647a.5.5 0 01.708.708l-6 6a.5.5 0 01-.708 0l-6-6a.5.5 0 010-.708z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+        }
+
+        .btn-apply {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, var(--accent), #c0392b);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform var(--transition), box-shadow var(--transition);
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
+        }
+
+        .btn-apply:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.45);
+        }
+
+        .btn-apply:active {
+            transform: scale(0.97);
+        }
+
+        /* ===== Listing cards ===== */
+        .listings {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            box-shadow: var(--shadow);
+            transition: transform var(--transition), border-color var(--transition);
+            animation: cardIn 0.4s ease both;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(233, 69, 96, 0.35);
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .card-city {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--accent);
+            background: rgba(233, 69, 96, 0.1);
+            padding: 3px 10px;
+            border-radius: 6px;
+        }
+
+        .card-date {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .card-price {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, #fff, #ccc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card-price-original {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+
+        .card-text {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            text-decoration: none;
+            transition: color var(--transition);
+        }
+
+        .card-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .card-link::after {
+            content: '→';
+            transition: transform var(--transition);
+        }
+
+        .card-link:hover::after {
+            transform: translateX(3px);
+        }
+
+        /* ===== Load more ===== */
+        .load-more-wrap {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .btn-load-more {
+            background: transparent;
+            color: var(--accent);
+            border: 1.5px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: 12px 32px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        .btn-load-more:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        /* ===== Skeleton loader ===== */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-card) 25%, rgba(255, 255, 255, 0.04) 50%, var(--bg-card) 75%);
+            background-size: 400% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .skeleton-card {
+            height: 160px;
+            margin-bottom: 12px;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* ===== Empty state ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+
+        .empty-state .emoji {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state p {
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* ===== Scrollbar ===== */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(233, 69, 96, 0.3);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-inner">
+            <h1>🏠 Аренда жилья</h1>
+            <span class="stat-badge" id="totalBadge">…</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Filters -->
+        <section class="filter-panel">
+            <div class="filter-title">Фильтры</div>
+            <div class="filter-row">
+                <select class="filter-select" id="citySelect">
+                    <option value="">Все города</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <input class="filter-input" type="number" id="minPrice" placeholder="Мин. цена $" min="0">
+                <input class="filter-input" type="number" id="maxPrice" placeholder="Макс. цена $" min="0">
+            </div>
+            <div class="filter-row">
+                <button class="btn-apply" id="applyBtn">Применить</button>
+            </div>
+        </section>
+
+        <!-- Listings -->
+        <section class="listings" id="listings"></section>
+
+        <!-- Load more -->
+        <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+            <button class="btn-load-more" id="loadMoreBtn">Загрузить ещё</button>
+        </div>
+    </main>
+
+    <script>
+        (() => {
+            // Telegram WebApp
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                tg.ready();
+                tg.expand();
+                // Apply Telegram theme colours if available
+                const theme = tg.themeParams;
+                if (theme?.bg_color) {
+                    document.documentElement.style.setProperty('--bg', theme.bg_color);
+                }
+                if (theme?.secondary_bg_color) {
+                    document.documentElement.style.setProperty('--bg-card', theme.secondary_bg_color);
+                }
+                if (theme?.text_color) {
+                    document.documentElement.style.setProperty('--text', theme.text_color);
+                }
+                if (theme?.hint_color) {
+                    document.documentElement.style.setProperty('--text-muted', theme.hint_color);
+                }
+                if (theme?.button_color) {
+                    document.documentElement.style.setProperty('--accent', theme.button_color);
+                }
+            }
+
+            const API = '';  // same origin
+            let currentPage = 1;
+            let totalPages = 1;
+
+            const citySelect = document.getElementById('citySelect');
+            const minPriceEl = document.getElementById('minPrice');
+            const maxPriceEl = document.getElementById('maxPrice');
+            const applyBtn = document.getElementById('applyBtn');
+            const listingsEl = document.getElementById('listings');
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            const loadMoreWrap = document.getElementById('loadMoreWrap');
+            const totalBadge = document.getElementById('totalBadge');
+
+            // ===== Fetch helpers =====
+            async function fetchJSON(url) {
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error(resp.statusText);
+                return resp.json();
+            }
+
+            // ===== Load cities =====
+            async function loadCities() {
+                try {
+                    const data = await fetchJSON(`${API}/api/cities`);
+                    data.cities.forEach(city => {
+                        const opt = document.createElement('option');
+                        opt.value = city;
+                        opt.textContent = city;
+                        citySelect.appendChild(opt);
+                    });
+                } catch (e) {
+                    console.error('Failed to load cities', e);
+                }
+            }
+
+            // ===== Render listings =====
+            function renderCard(l, idx) {
+                const dateStr = l.date ? new Date(l.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+                const origPrice = l.price_original && l.currency && l.currency !== 'USD'
+                    ? `${l.price_original.toLocaleString()} ${l.currency}`
+                    : '';
+
+                const card = document.createElement('article');
+                card.className = 'card';
+                card.style.animationDelay = `${idx * 0.06}s`;
+                card.innerHTML = `
+      <div class="card-header">
+        <span class="card-city">${esc(l.city || '—')}</span>
+        <span class="card-date">${dateStr}</span>
+      </div>
+      <div class="card-price">$${l.price_usd != null ? l.price_usd.toLocaleString() : '—'}</div>
+      ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
+      <p class="card-text">${esc(l.text || '')}</p>
+      <a class="card-link" href="${esc(l.link)}" target="_blank" rel="noopener">Открыть в Telegram</a>
+    `;
+                return card;
+            }
+
+            function esc(s) {
+                const d = document.createElement('div');
+                d.textContent = s;
+                return d.innerHTML;
+            }
+
+            function showSkeletons(n) {
+                for (let i = 0; i < n; i++) {
+                    const sk = document.createElement('div');
+                    sk.className = 'skeleton skeleton-card';
+                    listingsEl.appendChild(sk);
+                }
+            }
+            function removeSkeletons() {
+                listingsEl.querySelectorAll('.skeleton').forEach(el => el.remove());
+            }
+
+            // ===== Load listings =====
+            async function loadListings(page = 1, append = false) {
+                if (!append) {
+                    listingsEl.innerHTML = '';
+                    showSkeletons(3);
+                }
+
+                const params = new URLSearchParams();
+                const city = citySelect.value;
+                if (city) params.set('city', city);
+                const minP = minPriceEl.value;
+                const maxP = maxPriceEl.value;
+                if (minP) params.set('min_price', minP);
+                if (maxP) params.set('max_price', maxP);
+                params.set('page', page);
+                params.set('per_page', 20);
+
+                try {
+                    const data = await fetchJSON(`${API}/api/listings?${params}`);
+                    removeSkeletons();
+
+                    if (data.listings.length === 0 && !append) {
+                        listingsEl.innerHTML = `
+          <div class="empty-state">
+            <div class="emoji">🔍</div>
+            <p>Объявлений не найдено.<br>Попробуйте изменить фильтры.</p>
+          </div>`;
+                    } else {
+                        data.listings.forEach((l, i) => listingsEl.appendChild(renderCard(l, i)));
+                    }
+
+                    totalBadge.textContent = `${data.total} объявл.`;
+                    currentPage = data.page;
+                    totalPages = data.pages;
+                    loadMoreWrap.style.display = currentPage < totalPages ? '' : 'none';
+
+                    // Haptic feedback
+                    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                } catch (e) {
+                    removeSkeletons();
+                    console.error('Failed to load listings', e);
+                    if (!append) {
+                        listingsEl.innerHTML = `
+          <div class="empty-state">
+            <div class="emoji">⚠️</div>
+            <p>Не удалось загрузить данные.<br>Попробуйте позже.</p>
+          </div>`;
+                    }
+                }
+            }
+
+            // ===== Events =====
+            applyBtn.addEventListener('click', () => {
+                currentPage = 1;
+                loadListings(1);
+            });
+            loadMoreBtn.addEventListener('click', () => {
+                loadListings(currentPage + 1, true);
+            });
+            // Enter key on price inputs
+            [minPriceEl, maxPriceEl].forEach(el => {
+                el.addEventListener('keydown', e => { if (e.key === 'Enter') applyBtn.click(); });
+            });
+
+            // ===== Init =====
+            loadCities();
+            loadListings();
+        })();
+    </script>
+</body>
+
+</html>

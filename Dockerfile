@@ -18,5 +18,8 @@ COPY . .
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 
+# Expose port for Mini App
+EXPOSE 8000
+
 # Command to run the application
 CMD ["python", "-m", "app.main"]
