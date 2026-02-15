@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Аренда жилья — Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -384,6 +385,42 @@
             background: rgba(233, 69, 96, 0.3);
             border-radius: 4px;
         }
+
+        /* ===== Search ===== */
+        .search-wrap {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition);
+            box-shadow: var(--shadow);
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.15);
+        }
+
+        /* ===== Chart ===== */
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            height: 220px;
+            position: relative;
+        }
     </style>
 </head>
 
@@ -397,9 +434,18 @@
     </header>
 
     <main class="container">
+        <!-- Search -->
+        <div class="search-wrap">
+            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ключевым словам...">
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container">
+            <canvas id="priceChart"></canvas>
+        </div>
+
         <!-- Filters -->
         <section class="filter-panel">
-            <div class="filter-title">Фильтры</div>
             <div class="filter-row">
                 <select class="filter-select" id="citySelect">
                     <option value="">Все города</option>
@@ -461,6 +507,71 @@
             const loadMoreBtn = document.getElementById('loadMoreBtn');
             const loadMoreWrap = document.getElementById('loadMoreWrap');
             const totalBadge = document.getElementById('totalBadge');
+            const searchInput = document.getElementById('searchInput'); // New
+            const ctx = document.getElementById('priceChart').getContext('2d'); // New
+
+            // ===== Chart =====
+            let chartInstance = null;
+
+            async function updateChart(city) {
+                try {
+                    const url = city ? `${API}/api/histogram?city=${encodeURIComponent(city)}` : `${API}/api/histogram`;
+                    const data = await fetchJSON(url);
+
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+
+                    if (!data.labels || data.labels.length === 0) {
+                        // Optional: show "No data" or clear canvas
+                        return;
+                    }
+
+                    chartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                label: 'Объявления',
+                                data: data.data,
+                                backgroundColor: 'rgba(233, 69, 96, 0.5)',
+                                borderColor: 'rgba(233, 69, 96, 1)',
+                                borderWidth: 1,
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                title: {
+                                    display: true,
+                                    text: 'Распределение цен ($)',
+                                    color: '#a0a0b8',
+                                    font: { size: 12, family: 'Inter' }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                    ticks: { color: '#6b6b80', font: { size: 10 } }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#6b6b80', font: { size: 10 } }
+                                }
+                            },
+                            animation: { duration: 800 }
+                        }
+                    });
+
+                } catch (e) {
+                    console.error("Chart error", e);
+                }
+            }
+
 
             // ===== Fetch helpers =====
             async function fetchJSON(url) {
@@ -538,6 +649,10 @@
                 const maxP = maxPriceEl.value;
                 if (minP) params.set('min_price', minP);
                 if (maxP) params.set('max_price', maxP);
+
+                const searchVal = searchInput.value.trim();
+                if (searchVal) params.set('search', searchVal);
+
                 params.set('page', page);
                 params.set('per_page', 20);
 
@@ -549,7 +664,7 @@
                         listingsEl.innerHTML = `
           <div class="empty-state">
             <div class="emoji">🔍</div>
-            <p>Объявлений не найдено.<br>Попробуйте изменить фильтры.</p>
+            <p>Объявлений не найдено.<br>Попробуйте изменить параметры.</p>
           </div>`;
                     } else {
                         data.listings.forEach((l, i) => listingsEl.appendChild(renderCard(l, i)));
@@ -580,9 +695,28 @@
                 currentPage = 1;
                 loadListings(1);
             });
+
+            // City change updates chart
+            citySelect.addEventListener('change', () => {
+                updateChart(citySelect.value);
+                // Also optionally trigger filter apply? Let's leave manual apply for listings
+                // but update chart immediately for better UX
+            });
+
             loadMoreBtn.addEventListener('click', () => {
                 loadListings(currentPage + 1, true);
             });
+
+            // Search Debounce
+            let searchTimeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    currentPage = 1;
+                    loadListings(1);
+                }, 500);
+            });
+
             // Enter key on price inputs
             [minPriceEl, maxPriceEl].forEach(el => {
                 el.addEventListener('keydown', e => { if (e.key === 'Enter') applyBtn.click(); });
@@ -591,6 +725,7 @@
             // ===== Init =====
             loadCities();
             loadListings();
+            updateChart(); // Initial chart
         })();
     </script>
 </body>

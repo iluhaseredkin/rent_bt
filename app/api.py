@@ -61,6 +61,7 @@ async def get_listings(
     city: str | None = Query(None),
     min_price: float = Query(0, ge=0),
     max_price: float = Query(100_000, ge=0),
+    search: str | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
@@ -80,6 +81,12 @@ async def get_listings(
         if city:
             q = q.where(Listing.city == city)
             count_q = count_q.where(Listing.city == city)
+
+        if search:
+            # Case-insensitive search
+            pattern = f"%{search}%"
+            q = q.where(Listing.text.ilike(pattern))
+            count_q = count_q.where(Listing.text.ilike(pattern))
 
         # Total count
         total = (await session.execute(count_q)).scalar() or 0
@@ -111,6 +118,58 @@ async def get_listings(
             for l in listings
         ],
     }
+
+
+@app.get("/api/histogram")
+async def get_histogram(city: str | None = Query(None)):
+    """Return histogram data for price distribution."""
+    async with AsyncSessionLocal() as session:
+        # Filter by city if provided, otherwise all
+        q = select(Listing.price_usd).where(Listing.price_usd.isnot(None))
+        if city:
+            q = q.where(Listing.city == city)
+        
+        result = await session.execute(q)
+        prices = [p for p in result.scalars().all() if p > 0]
+        
+    if not prices:
+        return {"labels": [], "data": []}
+        
+    # Remove top 5% outliers for better chart visualization
+    prices.sort()
+    cutoff_idx = int(len(prices) * 0.95)
+    if cutoff_idx > 0:
+        prices = prices[:cutoff_idx]
+    
+    if not prices:
+        return {"labels": [], "data": []}
+
+    min_p = 0
+    max_p = prices[-1]
+    if max_p < 100: max_p = 100
+    
+    # 15 bins
+    bin_count = 15
+    step = (max_p - min_p) / bin_count
+    
+    bins = [0] * bin_count
+    labels = []
+    
+    for i in range(bin_count):
+        low = min_p + i * step
+        high = low + step
+        labels.append(f"{int(low)}-{int(high)}")
+        
+    for p in prices:
+        # Calculate bin index
+        idx = int((p - min_p) / step)
+        # Handle edge case for max value (put in last bin)
+        if idx >= bin_count:
+            idx = bin_count - 1
+        if 0 <= idx < bin_count:
+            bins[idx] += 1
+            
+    return {"labels": labels, "data": bins}
 
 
 @app.get("/api/stats")

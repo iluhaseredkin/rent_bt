@@ -79,8 +79,8 @@ def convert_to_usd(price, currency):
     # Updated rates (approx)
     rates = {
         'USD': 1.0,
-        'EUR': 1.08, # EUR to USD
-        'TRY': 0.03, # TRY to USD
+        'EUR': 1.15, # EUR to USD
+        'TRY': 0.023, # TRY to USD
         'RUB': 0.011, # RUB to USD
         'AMD': 0.0025 # AMD to USD
     }
@@ -106,7 +106,7 @@ async def run_parser():
                 try:
                     logger.info(f"Parsing channel: {channel_username}")
                     entity = await client.get_entity(channel_username)
-                    messages = await client.get_messages(entity, limit=50) # Limit per run to avoid spamming
+                    messages = await client.get_messages(entity, limit=100) # Limit per run to avoid spamming
                     
                     for message in messages:
                         if not message.text:
