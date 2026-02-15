@@ -137,6 +137,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 14px;
+            flex-wrap: wrap;
         }
 
         .filter-row:last-child {
@@ -145,7 +146,8 @@
 
         .filter-select,
         .filter-input {
-            flex: 1;
+            flex: 1 1 45%;
+            min-width: 0;
             background: var(--bg);
             color: var(--text);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -404,8 +406,8 @@
                 </select>
             </div>
             <div class="filter-row">
-                <input class="filter-input" type="number" id="minPrice" placeholder="Мин. цена $" min="0">
-                <input class="filter-input" type="number" id="maxPrice" placeholder="Макс. цена $" min="0">
+                <input class="filter-input" type="number" id="minPrice" placeholder="от, $" min="0">
+                <input class="filter-input" type="number" id="maxPrice" placeholder="до, $" min="0">
             </div>
             <div class="filter-row">
                 <button class="btn-apply" id="applyBtn">Применить</button>

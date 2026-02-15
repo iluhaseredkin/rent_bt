@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -10,7 +11,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .database import AsyncSessionLocal
 from .models import User, Listing, Stat
-from .parser import CITY_MAPPING
+from .parser import CITY_MAPPING, run_parser
 
 logger = logging.getLogger(__name__)
 
