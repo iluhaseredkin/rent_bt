@@ -66,6 +66,18 @@ async def cmd_restart(message: types.Message, state: FSMContext):
     await state.clear()
     await cmd_start(message, state)
 
+@dp.message(Command("update_base"))
+async def cmd_update_base(message: types.Message):
+    start_msg = await message.answer("🔄 Запуск обновления базы...")
+    
+    # Run parser
+    try:
+        await run_parser()
+        await start_msg.edit_text("✅ База успешно обновлена!")
+    except Exception as e:
+        logger.error(f"Manual update failed: {e}")
+        await start_msg.edit_text(f"❌ Ошибка при обновлении: {e}")
+
 @dp.message(Command("info"))
 async def cmd_info(message: types.Message):
     await message.answer("Этот бот ищет аренду жилья. /restart чтобы начать заново.")
