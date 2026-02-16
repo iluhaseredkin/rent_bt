@@ -405,5 +405,91 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
         });
     }
 
+    async function loadAdminDashboard() {
+        if (!tg.initData) return;
+        const headers = { 'Authorization': tg.initData };
+
+        // 1. Stats
+        fetch(`${API}/api/admin/stats`, { headers })
+            .then(r => r.json())
+            .then(data => {
+                const grid = document.getElementById('adminStats');
+                grid.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-val">${data.total_users}</div>
+                        <div class="stat-label">Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val">${data.active_users_24h}</div>
+                        <div class="stat-label">Active (24h)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val">${data.total_channels}</div>
+                        <div class="stat-label">Channels</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val" style="color:${data.error_channels > 0 ? '#e74c3c' : 'var(--accent)'}">${data.error_channels}</div>
+                        <div class="stat-label">Errors</div>
+                    </div>
+                `;
+            });
+
+        // 2. Suggestions
+        fetch(`${API}/api/admin/suggestions`, { headers })
+            .then(r => r.json())
+            .then(list => {
+                const el = document.getElementById('adminSuggestions');
+                if (list.length === 0) {
+                    el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Нет новых предложений</p>';
+                    return;
+                }
+                el.innerHTML = list.map(s => `
+                    <div class="list-item">
+                        <div class="list-info">
+                            <strong>${esc(s.type)}</strong>: ${esc(s.content)}
+                            <small>${new Date(s.created_at).toLocaleString()}</small>
+                        </div>
+                        <div>
+                            <button class="action-btn btn-appr" onclick="modSugg(${s.id}, 'approve')">✓</button>
+                            <button class="action-btn btn-rej" onclick="modSugg(${s.id}, 'reject')">✗</button>
+                        </div>
+                    </div>
+                `).join('');
+            });
+
+        // 3. Channels
+        fetch(`${API}/api/admin/channels`, { headers })
+            .then(r => r.json())
+            .then(list => {
+                const el = document.getElementById('adminChannels');
+                el.innerHTML = list.map(c => `
+                    <div class="list-item">
+                        <div class="list-info">
+                            <strong>@${esc(c.username)}</strong> (${esc(c.city)})
+                            <small>Status: ${c.status} | Errors: ${c.error_count}</small>
+                        </div>
+                        <div style="font-size:18px">
+                            ${c.status === 'active' ? '🟢' : '🔴'}
+                        </div>
+                    </div>
+                `).join('');
+            });
+    }
+
+    window.modSugg = async (id, action) => {
+        if (!confirm(`Confirm ${action}?`)) return;
+        try {
+            const res = await fetch(`${API}/api/admin/suggestions/${id}/${action}`, {
+                method: 'POST',
+                headers: { 'Authorization': tg.initData || '' }
+            });
+            if (res.ok) {
+                loadAdminDashboard(); // Refresh
+            } else {
+                alert('Error');
+            }
+        } catch (e) { alert('Network error'); }
+    };
+
     checkAdmin();
 })();
