@@ -58,10 +58,10 @@ async def get_listings(
         count_q = count_q.where(Listing.city == city)
 
     if search:
-        # Case-insensitive search
-        pattern = f"%{search}%"
-        q = q.where(Listing.text.ilike(pattern))
-        count_q = count_q.where(Listing.text.ilike(pattern))
+        # Case-insensitive search using lower() for broader compatibility
+        pattern = f"%{search.lower()}%"
+        q = q.where(func.lower(Listing.text).like(pattern))
+        count_q = count_q.where(func.lower(Listing.text).like(pattern))
 
     # Total count
     total = (await session.execute(count_q)).scalar() or 0

@@ -58,7 +58,7 @@ CHANNELS = list(CITY_MAPPING.keys())
 def extract_prices(text):
     if not text:
         return None
-    prices = re.findall(r'\d+\s*(?:\$|USD|долл|€|евро|лир|TL|AMD|֏|драм)', text)
+    prices = re.findall(r'\d+\s*(?:\$|USD|долл|€|евро|лир|TL|AMD|֏|драм)', text, re.IGNORECASE)
     valid_prices = [float(re.sub(r'[^\d.]', '', price)) for price in prices if
                     100 < float(re.sub(r'[^\d.]', '', price)) < 1000000]
     if valid_prices:
@@ -68,15 +68,16 @@ def extract_prices(text):
 def detect_currency(text):
     if not text:
         return None
-    if any(x in text for x in ['$', 'USD', 'долл']):
+    t = text.upper()
+    if any(x in t for x in ['$', 'USD', 'ДОЛЛ']):
         return 'USD'
-    if any(x in text for x in ['€', 'евро']):
+    if any(x in t for x in ['€', 'ЕВРО', 'EUR']):
         return 'EUR'
-    if any(x in text for x in ['лир', 'TL']):
+    if any(x in t for x in ['ЛИР', 'TL', 'TRY']):
         return 'TRY'
-    if any(x in text for x in ['руб', '₽']):
+    if any(x in t for x in ['РУБ', '₽', 'RUB']):
         return 'RUB'
-    if any(x in text for x in ['֏', 'AMD', 'драм']):
+    if any(x in t for x in ['֏', 'AMD', 'ДРАМ']):
         return 'AMD'
     return None
 
