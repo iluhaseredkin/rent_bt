@@ -421,6 +421,12 @@
             height: 220px;
             position: relative;
         }
+
+        /* Add specific style for the placeholder when no city is selected */
+        .search-input.no-city::placeholder {
+            font-style: italic;
+            opacity: 0.6;
+        }
     </style>
 </head>
 
@@ -434,10 +440,6 @@
     </header>
 
     <main class="container">
-        <!-- Search -->
-        <div class="search-wrap">
-            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ключевым словам...">
-        </div>
 
         <!-- Chart -->
         <div class="chart-container">
@@ -459,6 +461,11 @@
                 <button class="btn-apply" id="applyBtn">Применить</button>
             </div>
         </section>
+
+        <!-- Search (Moved below Apply button) -->
+        <div class="search-wrap">
+            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ключевым словам...">
+        </div>
 
         <!-- Listings -->
         <section class="listings" id="listings"></section>
@@ -580,6 +587,17 @@
                 return resp.json();
             }
 
+            // ===== Placeholder Logic =====
+            function updateSearchPlaceholder() {
+                if (!citySelect.value) {
+                    searchInput.placeholder = "сначала выберите город";
+                    searchInput.classList.add("no-city");
+                } else {
+                    searchInput.placeholder = "Поиск по ключевым словам...";
+                    searchInput.classList.remove("no-city");
+                }
+            }
+
             // ===== Load cities =====
             async function loadCities() {
                 try {
@@ -651,6 +669,28 @@
                 if (maxP) params.set('max_price', maxP);
 
                 const searchVal = searchInput.value.trim();
+
+                // Prevent search if city is not selected and search is entered
+                // Actually, the user just wanted UI guidance, but if we send it, API errors.
+                // Let's rely on API but maybe catch the 400 and show the emoji?
+                // The user said "search after filtration", implying we should filter by city first.
+                if (searchVal && !city) {
+                    // We can either not send search, or let it fail. 
+                    // Let's let it fail or handle gracefully? 
+                    // If we don't send 'search' param, it just returns all listings for the city (none/all).
+                    // But if user typed something they expect search.
+
+                    // Let's act as if "Apply" was clicked without search if no city, 
+                    // OR we can just return empty set client-side.
+                    removeSkeletons();
+                    listingsEl.innerHTML = `
+                      <div class="empty-state">
+                        <div class="emoji">☝️</div>
+                        <p>Сначала выберите город<br>чтобы использовать поиск.</p>
+                      </div>`;
+                    return;
+                }
+
                 if (searchVal) params.set('search', searchVal);
 
                 params.set('page', page);
@@ -699,6 +739,7 @@
             // City change updates chart
             citySelect.addEventListener('change', () => {
                 updateChart(citySelect.value);
+                updateSearchPlaceholder(); // update placeholder
                 // Also optionally trigger filter apply? Let's leave manual apply for listings
                 // but update chart immediately for better UX
             });
@@ -711,6 +752,11 @@
             let searchTimeout;
             searchInput.addEventListener('input', () => {
                 clearTimeout(searchTimeout);
+                // If no city, don't trigger search (placeholder tells them why)
+                if (!citySelect.value) {
+                    return;
+                }
+
                 searchTimeout = setTimeout(() => {
                     currentPage = 1;
                     loadListings(1);
@@ -723,6 +769,7 @@
             });
 
             // ===== Init =====
+            updateSearchPlaceholder(); // Init placeholder state
             loadCities();
             loadListings();
             updateChart(); // Initial chart

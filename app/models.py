@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, DateTime, BigInteger, Text, Boolean
 from .database import Base
 
@@ -8,7 +8,7 @@ class Listing(Base):
     id = Column(Integer, primary_key=True, index=True)
     message_id = Column(BigInteger, index=True)
     channel_username = Column(String, index=True)
-    date = Column(DateTime, default=datetime.utcnow)
+    date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Original data
     text = Column(Text)
@@ -34,8 +34,8 @@ class User(Base):
     
     # Bot state
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_interaction = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_interaction = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class Stat(Base):
     __tablename__ = "stats"
@@ -44,4 +44,4 @@ class Stat(Base):
     user_id = Column(BigInteger, index=True)
     action = Column(String)
     details = Column(String, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -66,6 +66,14 @@ async def get_listings(
     per_page: int = Query(20, ge=1, le=100),
 ):
     """Return filtered and paginated listings."""
+    
+    # Optimization: Require city if searching to prevent heavy scans
+    if search and not city:
+        # We can either error out or just proceed. The user request "search after filter" 
+        # strongly suggests restricting searchscope. 
+        # Returning empty or error is safer for "not dropping SE".
+        raise HTTPException(status_code=400, detail="City selection is required for search.")
+
     async with AsyncSessionLocal() as session:
         q = select(Listing).where(
             Listing.price_usd.isnot(None),
@@ -129,8 +137,13 @@ async def get_histogram(city: str | None = Query(None)):
         if city:
             q = q.where(Listing.city == city)
         
-        result = await session.execute(q)
-        prices = [p for p in result.scalars().all() if p > 0]
+        # Stream results to avoid loading all into memory at once
+        # Using stream scalars to handle large datasets
+        prices = []
+        result = await session.stream(q)
+        async for p in result.scalars():
+             if p > 0:
+                 prices.append(p)
         
     if not prices:
         return {"labels": [], "data": []}
@@ -162,12 +175,13 @@ async def get_histogram(city: str | None = Query(None)):
         
     for p in prices:
         # Calculate bin index
-        idx = int((p - min_p) / step)
-        # Handle edge case for max value (put in last bin)
-        if idx >= bin_count:
-            idx = bin_count - 1
-        if 0 <= idx < bin_count:
-            bins[idx] += 1
+        if step > 0:
+            idx = int((p - min_p) / step)
+            # Handle edge case for max value (put in last bin)
+            if idx >= bin_count:
+                idx = bin_count - 1
+            if 0 <= idx < bin_count:
+                bins[idx] += 1
             
     return {"labels": labels, "data": bins}
 

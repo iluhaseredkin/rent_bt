@@ -1,13 +1,20 @@
 import os
 import re
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from .database import AsyncSessionLocal
 from .models import Listing
+
+try:
+    from currency_converter import CurrencyConverter
+    currency_converter = CurrencyConverter()
+except Exception as e:
+    logging.getLogger(__name__).warning(f"Could not init CurrencyConverter: {e}. Using fallback rates.")
+    currency_converter = None
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +83,7 @@ def convert_to_usd(price, currency):
     if not price or not currency:
         return None
     
-    # Updated rates (approx)
+    # Fallback rates
     rates = {
         'USD': 1.0,
         'EUR': 1.15, # EUR to USD
@@ -85,6 +92,28 @@ def convert_to_usd(price, currency):
         'AMD': 0.0025 # AMD to USD
     }
     
+    if currency == 'USD':
+        return price
+
+    if currency_converter:
+        try:
+            # CurrencyConverter uses standard codes
+            code_map = {
+                'EUR': 'EUR',
+                'TRY': 'TRY',
+                'RUB': 'RUB', # Might be outdated in some free datasets, but standard
+                'AMD': 'AMD'  # Note: CurrencyConverter might not have AMD. Checking...
+            }
+            # If not in code_map, it might rely on library support. 
+            # CurrencyConverter mainly supports ECB rates.
+            # ECB rates usually include EUR, USD, TRY, etc. RUB is suspended.
+            
+            # Let's try to use it if standard code exists
+            if currency in ['EUR', 'TRY']:
+                return round(currency_converter.convert(price, currency, 'USD'), 2)
+        except Exception:
+            pass # Fallback
+
     rate = rates.get(currency, 1.0)
     return round(price * rate, 2)
 
@@ -108,6 +137,8 @@ async def run_parser():
                     entity = await client.get_entity(channel_username)
                     messages = await client.get_messages(entity, limit=100) # Limit per run to avoid spamming
                     
+                    batch_values = []
+
                     for message in messages:
                         if not message.text:
                             continue
@@ -127,27 +158,32 @@ async def run_parser():
                         city = CITY_MAPPING.get(channel_username, "Unknown")
                         link = f'https://t.me/{channel_username}/{message.id}'
                         
-                        # Upsert logic
-                        stmt = insert(Listing).values(
-                            message_id=message.id,
-                            channel_username=channel_username,
-                            date=message.date.replace(tzinfo=None), # naive for DB
-                            text=message.text,
-                            link=link,
-                            price_original=price,
-                            currency=currency,
-                            price_usd=usd_price,
-                            city=city
-                        ).on_conflict_do_update(
+                        # Prepare data for batch
+                        batch_values.append({
+                            'message_id': message.id,
+                            'channel_username': channel_username,
+                            'date': message.date.astimezone(timezone.utc).replace(tzinfo=None), # naive for DB but converted to UTC first
+                            'text': message.text,
+                            'link': link,
+                            'price_original': price,
+                            'currency': currency,
+                            'price_usd': usd_price,
+                            'city': city
+                        })
+
+                    if batch_values:
+                        stmt = insert(Listing).values(batch_values)
+                        stmt = stmt.on_conflict_do_update(
                             index_elements=['link'],
                             set_={
-                                'price_usd': usd_price,
-                                'text': message.text
+                                'price_usd': stmt.excluded.price_usd,
+                                'text': stmt.excluded.text
                             }
                         )
                         await db_session.execute(stmt)
+                        await db_session.commit()
+                        logger.info(f"Upserted {len(batch_values)} listings for {channel_username}")
                     
-                    await db_session.commit()
                 except Exception as e:
                     logger.error(f"Error parsing {channel_username}: {e}")
                     await db_session.rollback()
