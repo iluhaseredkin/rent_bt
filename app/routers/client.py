@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Query, HTTPException, Depends
 from sqlalchemy import select, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,7 @@ class SuggestionRequest(BaseModel):
     type: str  # listing, source
     content: str
     city: str | None = None
+    price: float | None = None
 
 # --- Endpoints ---
 
@@ -187,31 +189,21 @@ async def submit_suggestion(
     Submit a suggestion or direct listing (SECURED).
     """
     if suggestion.type == "listing":
-        # 1. Direct parsing of the ad text
-        from app.parser import extract_prices, detect_currency, convert_to_usd
-        
-        price = extract_prices(suggestion.content)
-        currency = detect_currency(suggestion.content)
-        usd_price = convert_to_usd(price, currency)
-        
-        if not price or not usd_price:
-             raise HTTPException(status_code=400, detail="Could not extract price from text. Please ensure price is clearly mentioned.")
-
-        # 2. Add as a direct listing
-        import time
-        new_listing = Listing(
-            channel_username="user_post",
-            date=func.now(),
-            text=suggestion.content,
-            link=f"user_{user.user_id}_{int(time.time())}", # Unique pseudo link
-            price_original=price,
-            currency=currency,
-            price_usd=usd_price,
-            city=suggestion.city or "Unknown"
+        # Save structured data to suggestions for admin approval
+        data = {
+            "text": suggestion.content,
+            "city": suggestion.city or "Unknown",
+            "price": suggestion.price
+        }
+        new_suggestion = Suggestion(
+            user_id=user.user_id,
+            type="listing",
+            content=json.dumps(data, ensure_ascii=False),
+            status="pending"
         )
-        session.add(new_listing)
+        session.add(new_suggestion)
         await session.commit()
-        return {"status": "ok", "message": "Listing published!"}
+        return {"status": "ok", "message": "Объявление отправлено на модерацию!"}
 
     elif suggestion.type == "source":
         # Save to suggestions for admin approval

@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app.models import Listing, Suggestion, User, Channel
 from app.auth import get_current_admin
+from app.parser import run_parser
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -121,22 +123,41 @@ async def moderate_suggestion(
         await session.commit()
         return {"status": "rejected"}
         
-    # Approval Logic
-    suggestion.status = 'approved'
-    
-    if suggestion.type == 'source':
-        # Expected format: "@username - City"
-        parts = suggestion.content.split(" - ")
-        if len(parts) >= 2:
-            username = parts[0].strip().replace("@", "")
-            city = parts[1].strip()
-            
-            # Add if not exists
-            res = await session.execute(select(Channel).where(Channel.username == username))
-            if not res.scalar_one_or_none():
-                new_ch = Channel(username=username, city=city)
-                session.add(new_ch)
-    
+    if action == 'approve':
+        suggestion.status = 'approved'
+        
+        if suggestion.type == 'source':
+            # Expected format: "@username - City"
+            parts = suggestion.content.split(" - ")
+            if len(parts) >= 2:
+                username = parts[0].strip().replace("@", "")
+                city = parts[1].strip()
+                
+                # Add if not exists
+                res = await session.execute(select(Channel).where(Channel.username == username))
+                if not res.scalar_one_or_none():
+                    new_ch = Channel(username=username, city=city)
+                    session.add(new_ch)
+        
+        elif suggestion.type == 'listing':
+            try:
+                data = json.loads(suggestion.content)
+                import time
+                new_listing = Listing(
+                    channel_username="user_post",
+                    date=func.now(),
+                    text=data.get("text"),
+                    link=f"user_{suggestion.user_id}_{int(time.time())}",
+                    price_original=data.get("price"),
+                    currency="USD", # Default to USD for direct posts for now
+                    price_usd=data.get("price"),
+                    city=data.get("city", "Unknown")
+                )
+                session.add(new_listing)
+            except Exception as e:
+                # Log or handle error
+                pass
+
     await session.commit()
     return {"status": "approved"}
     
@@ -157,3 +178,14 @@ async def add_channel(
     session.add(new_ch)
     await session.commit()
     return {"status": "created", "id": new_ch.id}
+
+@router.post("/run_parser")
+async def trigger_parser(
+    admin: User = Depends(get_current_admin)
+):
+    """Trigger manual database update (Admin only)."""
+    try:
+        await run_parser()
+        return {"status": "ok", "message": "База успешно обновлена!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
