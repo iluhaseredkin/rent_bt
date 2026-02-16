@@ -7,7 +7,8 @@ from telethon.sessions import StringSession
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from .database import AsyncSessionLocal
-from .models import Listing
+from .database import AsyncSessionLocal
+from .models import Listing, Channel
 
 try:
     from currency_converter import CurrencyConverter
@@ -131,11 +132,31 @@ async def run_parser():
              return
 
         async with AsyncSessionLocal() as db_session:
-            for channel_username in CHANNELS:
+            # Fetch channels from DB
+            result = await db_session.execute(select(Channel).where(Channel.status != 'inactive'))
+            db_channels = result.scalars().all()
+            
+            if not db_channels:
+                logger.warning("No channels found in DB to parse.")
+                return
+
+            for channel in db_channels:
+                channel_username = channel.username
                 try:
                     logger.info(f"Parsing channel: {channel_username}")
-                    entity = await client.get_entity(channel_username)
-                    messages = await client.get_messages(entity, limit=100) # Limit per run to avoid spamming
+                    
+                    # Update status to running? Or just log time
+                    
+                    try:
+                        entity = await client.get_entity(channel_username)
+                    except ValueError:
+                         logger.error(f"Channel not found: {channel_username}")
+                         channel.status = 'error'
+                         channel.error_count += 1
+                         await db_session.commit()
+                         continue
+                         
+                    messages = await client.get_messages(entity, limit=100)
                     
                     batch_values = []
 
@@ -143,7 +164,7 @@ async def run_parser():
                         if not message.text:
                             continue
                             
-                        # Keywords filter logic from original
+                        # Keywords filter
                         keywords = ['$', 'USD', 'долл', 'EUR', '€', 'евро', 'TL', 'лир', '֏', 'драм', 'AMD']
                         if not any(k in message.text for k in keywords):
                             continue
@@ -155,14 +176,16 @@ async def run_parser():
                             
                         currency = detect_currency(message.text)
                         usd_price = convert_to_usd(price, currency)
-                        city = CITY_MAPPING.get(channel_username, "Unknown")
+                        
+                        # Use city from DB channel record
+                        city = channel.city
+                        
                         link = f'https://t.me/{channel_username}/{message.id}'
                         
-                        # Prepare data for batch
                         batch_values.append({
                             'message_id': message.id,
                             'channel_username': channel_username,
-                            'date': message.date.astimezone(timezone.utc).replace(tzinfo=None), # naive for DB but converted to UTC first
+                            'date': message.date.astimezone(timezone.utc).replace(tzinfo=None),
                             'text': message.text,
                             'link': link,
                             'price_original': price,
@@ -181,11 +204,22 @@ async def run_parser():
                             }
                         )
                         await db_session.execute(stmt)
-                        await db_session.commit()
-                        logger.info(f"Upserted {len(batch_values)} listings for {channel_username}")
+                        
+                    # Update Channel stats
+                    channel.last_parsed_at = datetime.now(timezone.utc)
+                    channel.status = 'active'
+                    channel.error_count = 0 
+                    await db_session.commit()
+                    
+                    logger.info(f"Upserted {len(batch_values)} listings for {channel_username}")
                     
                 except Exception as e:
                     logger.error(f"Error parsing {channel_username}: {e}")
-                    await db_session.rollback()
+                    channel.status = 'error'
+                    channel.error_count += 1
+                    try:
+                        await db_session.commit()
+                    except:
+                        await db_session.rollback()
 
     logger.info("Parser finished.")

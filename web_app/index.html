@@ -427,6 +427,219 @@
             font-style: italic;
             opacity: 0.6;
         }
+
+        /* ===== Fab & Modals ===== */
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+            cursor: pointer;
+            z-index: 90;
+            transition: transform var(--transition);
+        }
+
+        .fab:hover {
+            transform: scale(1.05);
+        }
+
+        .admin-fab {
+            bottom: 90px;
+            background: #2c3e50;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            font-size: 20px;
+            display: none;
+            /* hidden by default */
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid var(--border);
+            transform: translateY(20px);
+            transition: 0.3s;
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0);
+        }
+
+        .modal h2 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            border-radius: var(--radius-sm);
+            outline: none;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        /* Admin Dashboard */
+        .admin-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 20px;
+            display: none;
+        }
+
+        .admin-panel.active {
+            display: block;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .stat-val {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .section-title {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: var(--text);
+            border-left: 3px solid var(--accent);
+            padding-left: 8px;
+        }
+
+        .list-item {
+            background: var(--bg-card);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .list-info small {
+            display: block;
+            color: var(--text-muted);
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 6px;
+        }
+
+        .btn-appr {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .btn-rej {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
     </style>
 </head>
 
@@ -475,6 +688,50 @@
             <button class="btn-load-more" id="loadMoreBtn">Загрузить ещё</button>
         </div>
     </main>
+
+    <!-- FABs -->
+    <div class="fab" id="suggestFab" title="Предложить канал/город">➕</div>
+    <div class="fab admin-fab" id="adminFab" title="Админ панель">⚙️</div>
+
+    <!-- Suggest Modal -->
+    <div class="modal-overlay" id="suggestModal">
+        <div class="modal">
+            <button class="btn-close" onclick="closeModal('suggestModal')">×</button>
+            <h2>Предложить идею</h2>
+            <div class="form-group">
+                <label class="form-label">Тип</label>
+                <select class="form-control" id="suggType">
+                    <option value="channel">Канал с арендой</option>
+                    <option value="city">Новый город</option>
+                    <option value="other">Другое</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Описание / Ссылка</label>
+                <textarea class="form-control" id="suggContent"
+                    placeholder="@channelname или название города..."></textarea>
+            </div>
+            <button class="btn-apply" id="sendSuggBtn">Отправить</button>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="admin-panel" id="adminPanel">
+        <div class="admin-header">
+            <h2>Admin Dashboard</h2>
+            <button class="btn-close" style="position:static" onclick="closeAdmin()">Закрыть</button>
+        </div>
+
+        <div class="stat-grid" id="adminStats">
+            <!-- Populated via JS -->
+        </div>
+
+        <h3 class="section-title">Предложения</h3>
+        <div id="adminSuggestions"></div>
+
+        <h3 class="section-title" style="margin-top:20px">Каналы</h3>
+        <div id="adminChannels"></div>
+    </div>
 
     <script>
         (() => {
@@ -773,6 +1030,168 @@
             loadCities();
             loadListings();
             updateChart(); // Initial chart
+
+            // ===== NEW: Admin & Suggestions Logic =====
+
+            const suggestFab = document.getElementById('suggestFab');
+            const suggestModal = document.getElementById('suggestModal');
+            const adminFab = document.getElementById('adminFab');
+            const adminPanel = document.getElementById('adminPanel');
+
+            // Toggle Modal
+            window.closeModal = (id) => {
+                document.getElementById(id).classList.remove('active');
+            };
+
+            suggestFab.addEventListener('click', () => {
+                document.getElementById('suggContent').value = '';
+                suggestModal.classList.add('active');
+            });
+
+            // Submit Suggestion
+            document.getElementById('sendSuggBtn').addEventListener('click', async () => {
+                const type = document.getElementById('suggType').value;
+                const content = document.getElementById('suggContent').value.trim();
+
+                if (!content) return alert('Введите описание или ссылку');
+
+                try {
+                    const res = await fetch(`${API}/api/suggest`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': tg.initData || ''
+                        },
+                        body: JSON.stringify({ type, content })
+                    });
+
+                    if (res.ok) {
+                        alert('Спасибо! Ваше предложение отправлено.');
+                        closeModal('suggestModal');
+                    } else {
+                        alert('Ошибка отправки. Попробуйте позже.');
+                    }
+                } catch (e) {
+                    alert('Ошибка сети');
+                }
+            });
+
+            // Check Admin Status (Try to fetch stats)
+            async function checkAdmin() {
+                if (!tg.initData) return;
+
+                try {
+                    const res = await fetch(`${API}/api/admin/stats`, {
+                        headers: { 'Authorization': tg.initData }
+                    });
+                    if (res.ok) {
+                        adminFab.style.display = 'flex';
+                        // Pre-load stats? No, wait for click
+                    }
+                } catch (e) {
+                    console.log('Not admin or network error');
+                }
+            }
+
+            // Admin Panel Logic
+            window.closeAdmin = () => {
+                adminPanel.classList.remove('active');
+            };
+
+            adminFab.addEventListener('click', () => {
+                adminPanel.classList.add('active');
+                loadAdminDashboard();
+            });
+
+            async function loadAdminDashboard() {
+                if (!tg.initData) return;
+                const headers = { 'Authorization': tg.initData };
+
+                // 1. Stats
+                fetch(`${API}/api/admin/stats`, { headers })
+                    .then(r => r.json())
+                    .then(data => {
+                        const grid = document.getElementById('adminStats');
+                        grid.innerHTML = `
+                            <div class="stat-card">
+                                <div class="stat-val">${data.total_users}</div>
+                                <div class="stat-label">Users</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-val">${data.active_users_24h}</div>
+                                <div class="stat-label">Active (24h)</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-val">${data.total_channels}</div>
+                                <div class="stat-label">Channels</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-val" style="color:${data.error_channels > 0 ? '#e74c3c' : 'var(--accent)'}">${data.error_channels}</div>
+                                <div class="stat-label">Errors</div>
+                            </div>
+                        `;
+                    });
+
+                // 2. Suggestions
+                fetch(`${API}/api/admin/suggestions`, { headers })
+                    .then(r => r.json())
+                    .then(list => {
+                        const el = document.getElementById('adminSuggestions');
+                        if (list.length === 0) {
+                            el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Нет новых предложений</p>';
+                            return;
+                        }
+                        el.innerHTML = list.map(s => `
+                            <div class="list-item">
+                                <div class="list-info">
+                                    <strong>${esc(s.type)}</strong>: ${esc(s.content)}
+                                    <small>${new Date(s.created_at).toLocaleString()}</small>
+                                </div>
+                                <div>
+                                    <button class="action-btn btn-appr" onclick="modSugg(${s.id}, 'approve')">✓</button>
+                                    <button class="action-btn btn-rej" onclick="modSugg(${s.id}, 'reject')">✗</button>
+                                </div>
+                            </div>
+                        `).join('');
+                    });
+
+                // 3. Channels
+                fetch(`${API}/api/admin/channels`, { headers })
+                    .then(r => r.json())
+                    .then(list => {
+                        const el = document.getElementById('adminChannels');
+                        el.innerHTML = list.map(c => `
+                            <div class="list-item">
+                                <div class="list-info">
+                                    <strong>@${esc(c.username)}</strong> (${esc(c.city)})
+                                    <small>Status: ${c.status} | Errors: ${c.error_count}</small>
+                                </div>
+                                <div style="font-size:18px">
+                                    ${c.status === 'active' ? '🟢' : '🔴'}
+                                </div>
+                            </div>
+                        `).join('');
+                    });
+            }
+
+            // Moderate Suggestion
+            window.modSugg = async (id, action) => {
+                if (!confirm(`Confirm ${action}?`)) return;
+                try {
+                    const res = await fetch(`${API}/api/admin/suggestions/${id}/${action}`, {
+                        method: 'POST',
+                        headers: { 'Authorization': tg.initData || '' }
+                    });
+                    if (res.ok) {
+                        loadAdminDashboard(); // Refresh
+                    } else {
+                        alert('Error');
+                    }
+                } catch (e) { alert('Network error'); }
+            };
+
+            // Init Admin Check
+            checkAdmin();
         })();
     </script>
 </body>

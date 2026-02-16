@@ -26,6 +26,16 @@ class Base(DeclarativeBase):
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Simple migration: add is_admin if not exists
+        # In a real prod env, use Alembic. Here we do a manual check.
+        from sqlalchemy import text
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"))
+            await conn.commit()
+        except:
+            # Column likely exists
+            pass
 
 async def get_db():
     async with AsyncSessionLocal() as session:
