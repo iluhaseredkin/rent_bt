@@ -17,30 +17,36 @@ from app.routers import client, admin
 logger = logging.getLogger(__name__)
 
 async def seed_data():
-    """Seed initial data if empty (e.g. admin user, default channels)."""
+    """Seed initial data if empty (e.g. default channels)."""
     async with AsyncSessionLocal() as session:
         # Check if we have channels
         res = await session.execute(select(Channel))
         if not res.first():
             logger.info("Seeding default channels...")
-            from app.parser import CITY_MAPPING # Legacy import just to get list
-            # We need to invert CITY_MAPPING or just hardcode some defaults
-            # Actually better to just let parser fail or wait for admin to add.
-            # But let's add some defaults to avoid empty state.
-            defaults = [
-                ("batumi_appartaments", "Batumi"),
-                ("tbilisi_rent", "Tbilisi"), 
-                # Add more real ones if known
-            ]
-            for username, city in defaults:
+            city_mapping = {
+                'batumi_arendaa': 'Batumi', 'kvartiravbatumi': 'Batumi',
+                'kobuletiarenda': 'Kobuleti', 'arenda_v_tbilise': 'Tbilisi',
+                'tbilisi_arendaa': 'Tbilisi', 'alaniya_arenda': 'Alanya',
+                'apartamenty_alanya': 'Alanya', 'alania_tipical': 'Alanya',
+                'antaliya_arenda': 'Antalya', 'Antalya_realestates': 'Antalya',
+                'stambyl_arenda': 'Istanbul', 'Istanbul_shat': 'Istanbul',
+                'novisad_stan': 'NoviSad', 'erevan_kvartira': 'Yerevan',
+                'standardrealty': 'Yerevan', 'kvartiraverevane1': 'Yerevan',
+                'chernogoria_realty': 'Montenegro', 'Montenegro_sell_rent': 'Montenegro',
+                'serbiya_arenda': 'Serbia', 'rentalserbia': 'Serbia',
+                'beograd_stan': 'Belgrade', 'flattorentbelgrade': 'Belgrade',
+                'fethiye_rent': 'Fethiye', 'housemarmaris': 'Marmaris',
+                'rentinlisbon': 'Lisbon', 'belkaspain': 'Barcelona'
+            }
+            for username, city in city_mapping.items():
                 session.add(Channel(username=username, city=city))
             await session.commit()
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     await init_db()
-    # await seed_data() # Optional: seed if needed
-    logger.info("Mini App DB initialized.")
+    await seed_data()
+    logger.info("Mini App DB initialized and seeded.")
     yield
 
 app = FastAPI(title="Rent Mini App API", lifespan=lifespan)

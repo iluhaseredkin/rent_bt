@@ -697,20 +697,36 @@
     <div class="modal-overlay" id="suggestModal">
         <div class="modal">
             <button class="btn-close" onclick="closeModal('suggestModal')">×</button>
-            <h2>Предложить идею</h2>
+            <h2 id="modalTitle">Предложить</h2>
             <div class="form-group">
-                <label class="form-label">Тип</label>
-                <select class="form-control" id="suggType">
-                    <option value="channel">Канал с арендой</option>
-                    <option value="city">Новый город</option>
-                    <option value="other">Другое</option>
+                <label class="form-label">Я хочу:</label>
+                <select class="form-control" id="suggType" onchange="toggleSuggestFields()">
+                    <option value="listing">Разместить объявление</option>
+                    <option value="source">Предложить источник</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label class="form-label">Описание / Ссылка</label>
-                <textarea class="form-control" id="suggContent"
-                    placeholder="@channelname или название города..."></textarea>
+
+            <div id="listingFields">
+                <div class="form-group">
+                    <label class="form-label">Город</label>
+                    <select class="form-control" id="suggCity">
+                        <!-- Populated via JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Текст объявления (с ценой)</label>
+                    <textarea class="form-control" id="suggContentListing"
+                        placeholder="Продам гараж, 500$ ..."></textarea>
+                </div>
             </div>
+
+            <div id="sourceFields" style="display:none">
+                <div class="form-group">
+                    <label class="form-label">@канал - город</label>
+                    <input type="text" class="form-control" id="suggContentSource" placeholder="@channelname - Batumi">
+                </div>
+            </div>
+
             <button class="btn-apply" id="sendSuggBtn">Отправить</button>
         </div>
     </div>
@@ -1044,16 +1060,44 @@
             };
 
             suggestFab.addEventListener('click', () => {
-                document.getElementById('suggContent').value = '';
+                document.getElementById('suggContentListing').value = '';
+                document.getElementById('suggContentSource').value = '';
+
+                // Fill city select in modal
+                const modalCity = document.getElementById('suggCity');
+                modalCity.innerHTML = citySelect.innerHTML;
+                // Remove the "Все города" option for posting
+                if (modalCity.options[0] && modalCity.options[0].value === '') {
+                    modalCity.remove(0);
+                }
+
                 suggestModal.classList.add('active');
+                toggleSuggestFields();
             });
+
+            window.toggleSuggestFields = () => {
+                const type = document.getElementById('suggType').value;
+                document.getElementById('listingFields').style.display = type === 'listing' ? 'block' : 'none';
+                document.getElementById('sourceFields').style.display = type === 'source' ? 'block' : 'none';
+            };
 
             // Submit Suggestion
             document.getElementById('sendSuggBtn').addEventListener('click', async () => {
                 const type = document.getElementById('suggType').value;
-                const content = document.getElementById('suggContent').value.trim();
+                let content = '';
+                let city = null;
 
-                if (!content) return alert('Введите описание или ссылку');
+                if (type === 'listing') {
+                    content = document.getElementById('suggContentListing').value.trim();
+                    city = document.getElementById('suggCity').value;
+                } else {
+                    content = document.getElementById('suggContentSource').value.trim();
+                }
+
+                if (!content) return alert('Заполните поле контента');
+                if (type === 'source' && !content.includes(' - ')) {
+                    return alert('Используйте формат: @канал - Город');
+                }
 
                 try {
                     const res = await fetch(`${API}/api/suggest`, {
@@ -1062,14 +1106,16 @@
                             'Content-Type': 'application/json',
                             'Authorization': tg.initData || ''
                         },
-                        body: JSON.stringify({ type, content })
+                        body: JSON.stringify({ type, content, city })
                     });
 
+                    const data = await res.json();
                     if (res.ok) {
-                        alert('Спасибо! Ваше предложение отправлено.');
+                        alert(data.message || 'Готово!');
                         closeModal('suggestModal');
+                        if (type === 'listing') loadListings(1); // Refresh to see original post
                     } else {
-                        alert('Ошибка отправки. Попробуйте позже.');
+                        alert(data.detail || 'Ошибка отправки');
                     }
                 } catch (e) {
                     alert('Ошибка сети');

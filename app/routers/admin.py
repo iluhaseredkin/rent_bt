@@ -124,14 +124,19 @@ async def moderate_suggestion(
     # Approval Logic
     suggestion.status = 'approved'
     
-    # If logic complex (e.g. create channel), do it here
-    if suggestion.type == 'channel':
-        # Try to parse content as username/city?
-        # For now, just mark approved, admin must add manually via another endpoint or direct DB access
-        # OR: implement auto-add if content format is known.
-        # Let's assume content is "username city" or JSON
-        pass
-        
+    if suggestion.type == 'source':
+        # Expected format: "@username - City"
+        parts = suggestion.content.split(" - ")
+        if len(parts) >= 2:
+            username = parts[0].strip().replace("@", "")
+            city = parts[1].strip()
+            
+            # Add if not exists
+            res = await session.execute(select(Channel).where(Channel.username == username))
+            if not res.scalar_one_or_none():
+                new_ch = Channel(username=username, city=city)
+                session.add(new_ch)
+    
     await session.commit()
     return {"status": "approved"}
     

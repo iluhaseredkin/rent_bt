@@ -1,24 +1,10 @@
 # Python
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
 env/
 venv/
+bt_env/
 .env
-.venv
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.pytest_cache/
 
 # Mac
 .DS_Store
@@ -30,4 +16,4 @@ coverage.xml
 # Local application data
 *.db
 *.sqlite3
-old/
+scripts/

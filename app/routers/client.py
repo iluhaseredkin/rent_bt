@@ -11,8 +11,9 @@ router = APIRouter(prefix="/api", tags=["client"])
 
 # --- Models ---
 class SuggestionRequest(BaseModel):
-    type: str  # channel, city, other
+    type: str  # listing, source
     content: str
+    city: str | None = None
 
 # --- Endpoints ---
 
@@ -183,16 +184,55 @@ async def submit_suggestion(
     session: AsyncSession = Depends(get_db)
 ):
     """
-    Submit a suggestion (SECURED).
-    User must provide valid initData in Authorization header.
+    Submit a suggestion or direct listing (SECURED).
     """
-    new_suggestion = Suggestion(
-        user_id=user.user_id,
-        type=suggestion.type,
-        content=suggestion.content,
-        status="pending"
-    )
-    session.add(new_suggestion)
-    await session.commit()
-    
-    return {"status": "ok", "message": "Suggestion submitted"}
+    if suggestion.type == "listing":
+        # 1. Direct parsing of the ad text
+        from app.parser import extract_prices, detect_currency, convert_to_usd
+        
+        price = extract_prices(suggestion.content)
+        currency = detect_currency(suggestion.content)
+        usd_price = convert_to_usd(price, currency)
+        
+        if not price or not usd_price:
+             raise HTTPException(status_code=400, detail="Could not extract price from text. Please ensure price is clearly mentioned.")
+
+        # 2. Add as a direct listing
+        import time
+        new_listing = Listing(
+            channel_username="user_post",
+            date=func.now(),
+            text=suggestion.content,
+            link=f"user_{user.user_id}_{int(time.time())}", # Unique pseudo link
+            price_original=price,
+            currency=currency,
+            price_usd=usd_price,
+            city=suggestion.city or "Unknown"
+        )
+        session.add(new_listing)
+        await session.commit()
+        return {"status": "ok", "message": "Listing published!"}
+
+    elif suggestion.type == "source":
+        # Save to suggestions for admin approval
+        new_suggestion = Suggestion(
+            user_id=user.user_id,
+            type="source",
+            content=suggestion.content,
+            status="pending"
+        )
+        session.add(new_suggestion)
+        await session.commit()
+        return {"status": "ok", "message": "Source suggestion submitted for approval"}
+
+    else:
+        # Fallback for other types
+        new_suggestion = Suggestion(
+            user_id=user.user_id,
+            type=suggestion.type,
+            content=suggestion.content,
+            status="pending"
+        )
+        session.add(new_suggestion)
+        await session.commit()
+        return {"status": "ok", "message": "Suggestion submitted"}
