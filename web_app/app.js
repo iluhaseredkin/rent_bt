@@ -405,6 +405,18 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
         });
     }
 
+    window.switchTab = (tabId) => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+        const btn = document.querySelector(`.tab-btn[onclick*="${tabId}"]`);
+        if (btn) btn.classList.add('active');
+        const panel = document.getElementById(`tab-${tabId}`);
+        if (panel) panel.classList.add('active');
+
+        loadAdminDashboard();
+    };
+
     async function loadAdminDashboard() {
         if (!tg.initData) return;
         const headers = { 'Authorization': tg.initData };
@@ -434,16 +446,17 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
                 `;
             });
 
-        // 2. Suggestions
+        // 2. Suggestions (Separated)
         fetch(`${API}/api/admin/suggestions`, { headers })
             .then(r => r.json())
             .then(list => {
-                const el = document.getElementById('adminSuggestions');
-                if (list.length === 0) {
-                    el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Нет новых предложений</p>';
-                    return;
-                }
-                el.innerHTML = list.map(s => `
+                const listEl = document.getElementById('adminListingSuggestions');
+                const sourceEl = document.getElementById('adminSourceSuggestions');
+
+                const listings = list.filter(s => s.type === 'listing');
+                const sources = list.filter(s => s.type === 'source');
+
+                const renderSugg = (s) => `
                     <div class="list-item">
                         <div class="list-info">
                             <strong>${esc(s.type)}</strong>: ${esc(s.content)}
@@ -454,7 +467,14 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
                             <button class="action-btn btn-rej" onclick="modSugg(${s.id}, 'reject')">✗</button>
                         </div>
                     </div>
-                `).join('');
+                `;
+
+                if (listEl) {
+                    listEl.innerHTML = listings.length ? listings.map(renderSugg).join('') : '<p class="empty-text">Нет новых объявлений</p>';
+                }
+                if (sourceEl) {
+                    sourceEl.innerHTML = sources.length ? sources.map(renderSugg).join('') : '<p class="empty-text">Нет предложений источников</p>';
+                }
             });
 
         // 3. Channels
@@ -468,13 +488,29 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
                             <strong>@${esc(c.username)}</strong> (${esc(c.city)})
                             <small>Status: ${c.status} | Errors: ${c.error_count}</small>
                         </div>
-                        <div style="font-size:18px">
+                        <div style="display:flex; align-items:center; gap:10px;">
                             ${c.status === 'active' ? '🟢' : '🔴'}
+                            <button class="action-btn btn-rej" style="padding:4px 8px;" onclick="deleteChannel(${c.id}, '@${c.username}')">🗑️</button>
                         </div>
                     </div>
                 `).join('');
             });
     }
+
+    window.deleteChannel = async (id, name) => {
+        if (!confirm(`Удалить канал ${name}?`)) return;
+        try {
+            const res = await fetch(`${API}/api/admin/channels/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': tg.initData || '' }
+            });
+            if (res.ok) {
+                loadAdminDashboard();
+            } else {
+                alert('Ошибка при удалении');
+            }
+        } catch (e) { alert('Ошибка сети'); }
+    };
 
     window.modSugg = async (id, action) => {
         if (!confirm(`Confirm ${action}?`)) return;
@@ -490,6 +526,39 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
             }
         } catch (e) { alert('Network error'); }
     };
+
+    // Auto-refresh logic
+    let dashboardInterval = null;
+    const intervalSelect = document.getElementById('autoUpdateInterval');
+
+    if (intervalSelect) {
+        // Load saved
+        const saved = localStorage.getItem('admin_refresh_interval') || '0';
+        intervalSelect.value = saved;
+
+        intervalSelect.addEventListener('change', () => {
+            const val = intervalSelect.value;
+            localStorage.setItem('admin_refresh_interval', val);
+            startDashboardTimer(val);
+        });
+
+        // Initial if panel is open... wait, usually better when active
+        if (saved !== '0') startDashboardTimer(saved);
+    }
+
+    function startDashboardTimer(mins) {
+        if (dashboardInterval) clearInterval(dashboardInterval);
+        const ms = parseInt(mins) * 60 * 1000;
+        if (ms > 0) {
+            dashboardInterval = setInterval(() => {
+                const panel = document.getElementById('adminPanel');
+                if (panel && panel.classList.contains('active')) {
+                    console.log('Auto-refreshing admin dashboard...');
+                    loadAdminDashboard();
+                }
+            }, ms);
+        }
+    }
 
     checkAdmin();
 })();

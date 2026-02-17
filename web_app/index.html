@@ -111,23 +111,55 @@
             <button class="btn-close" style="position:static" onclick="closeAdmin()">Закрыть</button>
         </div>
 
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <button class="btn-apply" style="padding:8px; font-size:12px;" onclick="loadAdminDashboard()">Обновить
-                данные</button>
-            <button class="btn-apply" id="runParserBtn"
-                style="padding:8px; font-size:12px; background:linear-gradient(135deg, #2ecc71, #27ae60); box-shadow:0 4px 15px rgba(46, 204, 113, 0.3);">Обновить
-                базу</button>
+        <nav class="admin-tabs">
+            <button class="tab-btn active" onclick="switchTab('dash')">Дашборд</button>
+            <button class="tab-btn" onclick="switchTab('sources')">Источники</button>
+            <button class="tab-btn" onclick="switchTab('listings')">Объявления</button>
+        </nav>
+
+        <!-- Tab 1: Dashboard -->
+        <div id="tab-dash" class="tab-panel active">
+            <div class="stat-grid" id="adminStats">
+                <!-- Populated via JS -->
+            </div>
+
+            <div class="config-row">
+                <div class="config-item">
+                    <label class="form-label" style="margin:0">Автообновление (мин):</label>
+                    <select class="form-control" id="autoUpdateInterval"
+                        style="width:auto; height:36px; padding:0 8px;">
+                        <option value="0">Выкл</option>
+                        <option value="5">5 мин</option>
+                        <option value="15">15 мин</option>
+                        <option value="30">30 мин</option>
+                        <option value="60">1 час</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-apply" style="width:100%;" onclick="loadAdminDashboard()">Обновить данные</button>
         </div>
 
-        <div class="stat-grid" id="adminStats">
-            <!-- Populated via JS -->
+        <!-- Tab 2: Sources -->
+        <div id="tab-sources" class="tab-panel">
+            <div class="config-row" style="margin-bottom:20px; text-align:center;">
+                <button class="btn-apply" id="runParserBtn"
+                    style="background:linear-gradient(135deg, #2ecc71, #27ae60); box-shadow:0 4px 15px rgba(46, 204, 113, 0.3);">Обновить
+                    базу (Parser)</button>
+            </div>
+
+            <h3 class="section-title">Предложенные источники</h3>
+            <div id="adminSourceSuggestions"></div>
+
+            <h3 class="section-title" style="margin-top:20px">Текущие каналы</h3>
+            <div id="adminChannels"></div>
         </div>
 
-        <h3 class="section-title">Предложения</h3>
-        <div id="adminSuggestions"></div>
-
-        <h3 class="section-title" style="margin-top:20px">Каналы</h3>
-        <div id="adminChannels"></div>
+        <!-- Tab 3: Listings -->
+        <div id="tab-listings" class="tab-panel">
+            <h3 class="section-title">Новые объявления на модерации</h3>
+            <div id="adminListingSuggestions"></div>
+        </div>
     </div>
 
     <script src="/static/app.js"></script>

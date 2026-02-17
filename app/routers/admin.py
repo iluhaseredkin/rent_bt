@@ -179,6 +179,21 @@ async def add_channel(
     await session.commit()
     return {"status": "created", "id": new_ch.id}
 
+@router.delete("/channels/{id}")
+async def delete_channel(
+    id: int,
+    admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db)
+):
+    """Delete a channel."""
+    result = await session.execute(select(Channel).where(Channel.id == id))
+    channel = result.scalar_one_or_none()
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    await session.delete(channel)
+    await session.commit()
+    return {"status": "deleted"}
+
 @router.post("/run_parser")
 async def trigger_parser(
     admin: User = Depends(get_current_admin)
