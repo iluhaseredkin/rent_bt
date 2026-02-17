@@ -185,6 +185,7 @@ async def send_daily_notifications():
                     for l in listings:
                         msg += f"📅 {l.date.strftime('%Y-%m-%d')} | 💰 {l.price_usd} USD\n🔗 {l.link}\n\n"
                     await bot.send_message(user.user_id, msg)
+                    await log_stat(user.user_id, "notification_sent")
                 else:
                     # Optional: send "nothing new today" or stay silent
                     pass

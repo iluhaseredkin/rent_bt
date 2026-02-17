@@ -436,6 +436,14 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
                         <div class="stat-label">Active (24h)</div>
                     </div>
                     <div class="stat-card">
+                        <div class="stat-val">${data.subscribed_users}</div>
+                        <div class="stat-label">Subscribed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val">${data.notifications_sent_24h}</div>
+                        <div class="stat-label">Notif. (24h)</div>
+                    </div>
+                    <div class="stat-card">
                         <div class="stat-val">${data.total_channels}</div>
                         <div class="stat-label">Channels</div>
                     </div>

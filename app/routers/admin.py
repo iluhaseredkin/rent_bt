@@ -26,6 +26,8 @@ class SuggestionResponse(BaseModel):
 class StatsResponse(BaseModel):
     total_users: int
     active_users_24h: int
+    subscribed_users: int
+    notifications_sent_24h: int
     total_channels: int
     error_channels: int
     pending_suggestions: int
@@ -59,6 +61,18 @@ async def get_admin_stats(
         select(func.count(User.user_id)).where(User.last_interaction >= day_ago)
     )).scalar() or 0
     
+    # Subscribed: users who have set their budget (min/max price)
+    subscribed_users = (await session.execute(
+        select(func.count(User.user_id)).where(User.min_price > 0)
+    )).scalar() or 0
+    
+    # Notifications sent in 24h
+    notif_sent = (await session.execute(
+        select(func.count(Stat.id))
+        .where(Stat.action == 'notification_sent')
+        .where(Stat.timestamp >= day_ago)
+    )).scalar() or 0
+    
     total_channels = (await session.execute(select(func.count(Channel.id)))).scalar() or 0
     error_channels = (await session.execute(
         select(func.count(Channel.id)).where(Channel.status == 'error')
@@ -71,6 +85,8 @@ async def get_admin_stats(
     return {
         "total_users": total_users,
         "active_users_24h": active_users,
+        "subscribed_users": subscribed_users,
+        "notifications_sent_24h": notif_sent,
         "total_channels": total_channels,
         "error_channels": error_channels,
         "pending_suggestions": pending_sugg
