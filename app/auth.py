@@ -103,6 +103,7 @@ async def get_current_admin(user: User = Depends(verify_telegram_authorization))
             pass
 
     if not user.is_admin and not is_env_admin:
+        print(f"DEBUG: Admin check FAILED for user_id={user.user_id}. ADMIN_ID env: {ADMIN_ID}")
         raise HTTPException(status_code=403, detail="Admin privileges required")
     
     # If it's an env admin but not marked in DB, we could optionally update DB here

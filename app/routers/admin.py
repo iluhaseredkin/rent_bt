@@ -7,7 +7,7 @@ from typing import List
 from datetime import datetime, timedelta, timezone
 
 from app.database import get_db
-from app.models import Listing, Suggestion, User, Channel
+from app.models import Listing, Suggestion, User, Channel, Stat
 from app.auth import get_current_admin
 from app.parser import run_parser
 

@@ -357,9 +357,12 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
             });
             if (res.ok) {
                 adminFab.style.display = 'flex';
+                console.log('Admin session verified.');
+            } else {
+                console.log('Admin access check response:', res.status);
             }
         } catch (e) {
-            console.log('Not admin or network error');
+            console.error('Admin check network error:', e);
         }
     }
 
