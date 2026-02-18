@@ -33,16 +33,10 @@ async def main():
     logger.info("Database initialized.")
 
     # Setup Scheduler
-    scheduler = AsyncIOScheduler()
-
-    # Run parser every 6 hours
-    scheduler.add_job(run_parser, 'interval', hours=6, id='parser_job')
-
-    # Run notifications daily at 10:00 UTC
-    scheduler.add_job(send_daily_notifications, 'cron', hour=10, minute=0, id='notification_job')
-
+    from app.scheduler import scheduler, update_scheduler_jobs
+    await update_scheduler_jobs()
     scheduler.start()
-    logger.info("Scheduler started.")
+    logger.info("Scheduler started with dynamic jobs.")
 
     # Start FastAPI server in background task
     api_task = asyncio.create_task(run_api_server())

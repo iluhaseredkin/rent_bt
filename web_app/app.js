@@ -375,6 +375,7 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
     adminFab.addEventListener('click', () => {
         adminPanel.classList.add('active');
         loadAdminDashboard();
+        if (window.loadParserConfig) window.loadParserConfig();
     });
 
     // Run Parser Button
@@ -570,6 +571,72 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
             }, ms);
         }
     }
+
+    function loadParserConfig() {
+        if (!tg.initData) return;
+        const headers = { 'Authorization': tg.initData };
+
+        fetch(`${API}/api/admin/config`, { headers })
+            .then(r => r.json())
+            .then(data => {
+                const mode = document.getElementById('parserMode');
+                const interval = document.getElementById('parserInterval');
+                const time = document.getElementById('parserTime');
+
+                if (mode) mode.value = data.parser_mode;
+                if (interval) interval.value = data.parser_interval_hours;
+                if (time) time.value = data.parser_daily_time;
+
+                updateParserSettingVisibility(data.parser_mode);
+            });
+    }
+
+    function updateParserSettingVisibility(mode) {
+        const intCtrls = document.getElementById('parserIntervalControls');
+        const dayCtrls = document.getElementById('parserDailyControls');
+        if (intCtrls) intCtrls.style.display = mode === 'interval' ? 'block' : 'none';
+        if (dayCtrls) dayCtrls.style.display = mode === 'daily' ? 'block' : 'none';
+    }
+
+    const parserModeSelect = document.getElementById('parserMode');
+    if (parserModeSelect) {
+        parserModeSelect.addEventListener('change', (e) => {
+            updateParserSettingVisibility(e.target.value);
+        });
+    }
+
+    window.saveParserConfig = async () => {
+        const mode = document.getElementById('parserMode').value;
+        const intervalInput = document.getElementById('parserInterval');
+        const interval = intervalInput ? parseInt(intervalInput.value) : 6;
+        const timeInput = document.getElementById('parserTime');
+        const time = timeInput ? timeInput.value : '03:00';
+
+        try {
+            const res = await fetch(`${API}/api/admin/config`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': tg.initData || ''
+                },
+                body: JSON.stringify({
+                    parser_mode: mode,
+                    parser_interval_hours: interval,
+                    parser_daily_time: time
+                })
+            });
+            if (res.ok) {
+                alert('Расписание сохранено!');
+            } else {
+                alert('Ошибка сохранения');
+            }
+        } catch (e) {
+            alert('Ошибка сети: ' + e.message);
+        }
+    };
+
+    // Export for use in event listeners
+    window.loadParserConfig = loadParserConfig;
 
     checkAdmin();
 })();

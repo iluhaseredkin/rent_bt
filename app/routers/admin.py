@@ -40,10 +40,67 @@ class ChannelResponse(BaseModel):
     error_count: int
     last_parsed_at: datetime | None
 
-class ApproveRequest(BaseModel):
-    action: str = "approve" # approve / reject
+class ConfigResponse(BaseModel):
+    parser_mode: str
+    parser_interval_hours: int
+    parser_daily_time: str
+
+class ConfigUpdate(BaseModel):
+    parser_mode: str | None = None
+    parser_interval_hours: int | None = None
+    parser_daily_time: str | None = None
 
 # --- Endpoints ---
+
+@router.get("/config", response_model=ConfigResponse)
+async def get_config(
+    admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db)
+):
+    """Get parser configuration settings."""
+    from app.models import Setting
+    
+    # Helper to get or default
+    async def get_s(k, d):
+        r = await session.execute(select(Setting).where(Setting.key == k))
+        s = r.scalar_one_or_none()
+        return s.value if s else d
+
+    return {
+        "parser_mode": await get_s("parser_mode", "interval"),
+        "parser_interval_hours": int(await get_s("parser_interval_hours", "6")),
+        "parser_daily_time": await get_s("parser_daily_time", "03:00")
+    }
+
+@router.post("/config")
+async def update_config(
+    data: ConfigUpdate,
+    admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db)
+):
+    """Update parser configuration and reschedule jobs."""
+    from app.models import Setting
+    
+    for key, value in data.dict(exclude_unset=True).items():
+        if value is not None:
+            # Upsert
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            # Since we might not be on Postgres (using SQLite locally often in these templates), 
+            # let's do a simple check and update
+            res = await session.execute(select(Setting).where(Setting.key == key))
+            setting = res.scalar_one_or_none()
+            if setting:
+                setting.value = str(value)
+            else:
+                session.add(Setting(key=key, value=str(value)))
+    
+    await session.commit()
+    
+    # Trigger scheduler update
+    from app.scheduler import update_scheduler_jobs
+    await update_scheduler_jobs()
+    
+    return {"status": "ok"}
 
 @router.get("/stats", response_model=StatsResponse)
 async def get_admin_stats(

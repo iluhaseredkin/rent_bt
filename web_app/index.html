@@ -138,6 +138,28 @@
                 </div>
             </div>
 
+            <h3 class="section-title" style="margin: 15px 0 10px;">Расписание парсера (Server)</h3>
+            <div class="config-row">
+                <div class="form-group">
+                    <label class="form-label">Режим запуска:</label>
+                    <select class="form-control" id="parserMode">
+                        <option value="manual">Только вручную</option>
+                        <option value="interval">Интервал (каждые X часов)</option>
+                        <option value="daily">Раз в сутки (время UTC)</option>
+                    </select>
+                </div>
+                <div id="parserIntervalControls" class="form-group" style="display:none;">
+                    <label class="form-label">Интервал (часов):</label>
+                    <input type="number" class="form-control" id="parserInterval" value="6" min="1" max="168">
+                </div>
+                <div id="parserDailyControls" class="form-group" style="display:none;">
+                    <label class="form-label">Время (HH:MM UTC):</label>
+                    <input type="time" class="form-control" id="parserTime" value="03:00">
+                </div>
+                <button class="btn-apply" style="margin-top:10px; font-size:13px; padding:10px;"
+                    onclick="saveParserConfig()">Сохранить расписание</button>
+            </div>
+
             <button class="btn-apply" style="width:100%;" onclick="loadAdminDashboard()">Обновить данные</button>
         </div>
 

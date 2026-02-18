@@ -67,3 +67,8 @@ class Suggestion(Base):
     content = Column(Text) # JSON or plain text
     status = Column(String, default="pending") # pending, approved, rejected
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+class Setting(Base):
+    __tablename__ = "settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(String)
