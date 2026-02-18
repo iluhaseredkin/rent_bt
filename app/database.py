@@ -5,8 +5,9 @@ from sqlalchemy.orm import DeclarativeBase
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    # Fallback to a local sqlite for development if not provided or testing
-    DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+    # Use a dedicated data folder for persistence (important for Docker volumes)
+    db_path = "/app/data/test.db" if os.path.exists("/app/data") else "./test.db"
+    DATABASE_URL = f"sqlite+aiosqlite:///{db_path}"
 elif DATABASE_URL.startswith("postgres://"):
     # SQLAlchemy requires postgresql://
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
