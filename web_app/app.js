@@ -502,7 +502,7 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
                     <div class="list-item">
                         <div class="list-info">
                             <strong>@${esc(c.username)}</strong> (${esc(c.city)})
-                            <small>Status: ${c.status} | Errors: ${c.error_count}</small>
+                            <small>Last: ${c.last_parsed_at ? new Date(c.last_parsed_at).toLocaleString() : 'none'} | Errors: ${c.error_count}</small>
                         </div>
                         <div style="display:flex; align-items:center; gap:10px;">
                             ${c.status === 'active' ? '🟢' : '🔴'}
