@@ -430,6 +430,7 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
             .then(r => r.json())
             .then(data => {
                 const grid = document.getElementById('adminStats');
+                if (!grid) return;
                 grid.innerHTML = `
                     <div class="stat-card">
                         <div class="stat-val">${data.total_users}</div>
@@ -456,7 +457,8 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
                         <div class="stat-label">Errors</div>
                     </div>
                 `;
-            });
+            })
+            .catch(e => console.error("Error loading stats:", e));
 
         // 2. Suggestions (Separated)
         fetch(`${API}/api/admin/suggestions`, { headers })
@@ -487,13 +489,15 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
                 if (sourceEl) {
                     sourceEl.innerHTML = sources.length ? sources.map(renderSugg).join('') : '<p class="empty-text">Нет предложений источников</p>';
                 }
-            });
+            })
+            .catch(e => console.error("Error loading suggestions:", e));
 
         // 3. Channels
         fetch(`${API}/api/admin/channels`, { headers })
             .then(r => r.json())
             .then(list => {
                 const el = document.getElementById('adminChannels');
+                if (!el) return;
                 el.innerHTML = list.map(c => `
                     <div class="list-item">
                         <div class="list-info">
@@ -506,7 +510,8 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
                         </div>
                     </div>
                 `).join('');
-            });
+            })
+            .catch(e => console.error("Error loading channels:", e));
     }
 
     window.deleteChannel = async (id, name) => {
@@ -539,38 +544,6 @@ ${origPrice ? `<div class="card-price-original">${esc(origPrice)}</div>` : ''}
         } catch (e) { alert('Network error'); }
     };
 
-    // Auto-refresh logic
-    let dashboardInterval = null;
-    const intervalSelect = document.getElementById('autoUpdateInterval');
-
-    if (intervalSelect) {
-        // Load saved
-        const saved = localStorage.getItem('admin_refresh_interval') || '0';
-        intervalSelect.value = saved;
-
-        intervalSelect.addEventListener('change', () => {
-            const val = intervalSelect.value;
-            localStorage.setItem('admin_refresh_interval', val);
-            startDashboardTimer(val);
-        });
-
-        // Initial if panel is open... wait, usually better when active
-        if (saved !== '0') startDashboardTimer(saved);
-    }
-
-    function startDashboardTimer(mins) {
-        if (dashboardInterval) clearInterval(dashboardInterval);
-        const ms = parseInt(mins) * 60 * 1000;
-        if (ms > 0) {
-            dashboardInterval = setInterval(() => {
-                const panel = document.getElementById('adminPanel');
-                if (panel && panel.classList.contains('active')) {
-                    console.log('Auto-refreshing admin dashboard...');
-                    loadAdminDashboard();
-                }
-            }, ms);
-        }
-    }
 
     function loadParserConfig() {
         if (!tg.initData) return;
